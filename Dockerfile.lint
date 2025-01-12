@@ -1,0 +1,16 @@
+FROM golangci/golangci-lint:latest
+
+WORKDIR /app
+
+# Copy only necessary files for golangci-lint
+# COPY .golangci.yml ./
+COPY go.mod go.sum ./
+
+# Install dependencies
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Run golangci-lint during build
+RUN golangci-lint run --timeout=60s

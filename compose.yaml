@@ -1,0 +1,59 @@
+services:
+  app:
+    container_name: server
+    build: .
+    image: server
+    ports:
+      - 8080:8080
+    environment:
+      - PORT=8080
+      - DSN=user:password@tcp(tonx-mysql:3306)/tonx?parseTime=true&multiStatements=true
+      - REDIS_HOST=tonx-redis
+      - REDIS_PORT=6379
+    depends_on:
+      mysql:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    networks:
+      - go-network
+
+  mysql:
+    container_name: tonx-mysql
+    image: mysql:9.0
+    ports:
+      - 3306:3306
+    environment:
+      - MYSQL_ROOT_PASSWORD=password
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=password
+      - MYSQL_DATABASE=tonx
+    # volumes:
+    #   - dbdata:/var/lib/mysql
+    networks:
+      - go-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+  cache:
+    container_name: tonx-redis
+    image: redis:latest
+    ports:
+      - 6379:6379
+    networks:
+      - go-network
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    command: ["redis-server"]
+
+# volumes:
+#   dbdata:
+
+networks:
+  go-network:
+    driver: bridge
