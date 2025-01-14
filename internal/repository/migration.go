@@ -12,10 +12,10 @@ func Migrate(gdb *gorm.DB) error {
 		return err
 	}
 
-	// for _, seed := range All() {
-	// 	if err = seed.Run(gdb); err != nil {
-	// 		return err
-	// 	}
-	// }
+	for _, seed := range All() {
+		if err = seed.Run(gdb); err != nil {
+			return err
+		}
+	}
 	return nil
 }

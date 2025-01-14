@@ -81,14 +81,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/Flight"
-                  pagination:
-                    $ref: "#/components/schemas/Pagination"
+                $ref: "#/components/schemas/SearchFlightResponse"
         "400":
           description: Invalid parameters
           content:
@@ -111,8 +104,21 @@ components:
       properties:
         startTime:
           type: string
+
     Flight:
       type: object
+      required:
+        - id
+        - flight_number
+        - airline
+        - departure_city
+        - arrival_city
+        - departure_time
+        - arrival_time
+        - aircraft
+        - status
+        - available_seats
+        - base_price
       properties:
         id:
           type: integer
@@ -121,15 +127,23 @@ components:
         flight_number:
           type: string
           example: "BA123"
+          minLength: 1
+          maxLength: 20
         airline:
           type: string
           example: "British Airways"
+          minLength: 1
+          maxLength: 100
         departure_city:
           type: string
           example: "New York"
+          minLength: 1
+          maxLength: 100
         arrival_city:
           type: string
           example: "London"
+          minLength: 1
+          maxLength: 100
         departure_time:
           type: string
           format: date-time
@@ -141,33 +155,47 @@ components:
         aircraft:
           type: string
           example: "Boeing 787"
+          minLength: 1
+          maxLength: 50
         status:
           type: string
           enum: [SCHEDULED, DELAYED, CANCELLED, IN_PROGRESS, COMPLETED]
           example: "SCHEDULED"
-        total_seats:
-          type: integer
-          example: 200
         available_seats:
           type: integer
           example: 150
+          minimum: 0
         base_price:
           type: integer
           description: Price in smallest currency unit (e.g., cents)
-          example: 5000
+          example: 50000
+          minimum: 0
 
-    Pagination:
+    SearchFlightResponse:
       type: object
+      required:
+        - data
+        - totalCount
+        - page
+        - pageSize
       properties:
-        current_page:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Flight"
+        totalCount:
           type: integer
-          example: 1
-        page_size:
+          format: int64
+          minimum: 0
+          description: Total number of records
+        page:
           type: integer
-          example: 10
-        total_items:
+          minimum: 1
+          description: Current page number
+        pageSize:
           type: integer
-          example: 50
+          minimum: 1
+          description: Number of items per page
 
     Error:
       required:

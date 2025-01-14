@@ -43,35 +43,41 @@ type Error struct {
 
 // Flight defines model for Flight.
 type Flight struct {
-	Aircraft       *string    `json:"aircraft,omitempty"`
-	Airline        *string    `json:"airline,omitempty"`
-	ArrivalCity    *string    `json:"arrival_city,omitempty"`
-	ArrivalTime    *time.Time `json:"arrival_time,omitempty"`
-	AvailableSeats *int       `json:"available_seats,omitempty"`
+	Aircraft       string    `json:"aircraft"`
+	Airline        string    `json:"airline"`
+	ArrivalCity    string    `json:"arrival_city"`
+	ArrivalTime    time.Time `json:"arrival_time"`
+	AvailableSeats int       `json:"available_seats"`
 
 	// BasePrice Price in smallest currency unit (e.g., cents)
-	BasePrice     *int          `json:"base_price,omitempty"`
-	DepartureCity *string       `json:"departure_city,omitempty"`
-	DepartureTime *time.Time    `json:"departure_time,omitempty"`
-	FlightNumber  *string       `json:"flight_number,omitempty"`
-	Id            *uint         `json:"id,omitempty"`
-	Status        *FlightStatus `json:"status,omitempty"`
-	TotalSeats    *int          `json:"total_seats,omitempty"`
+	BasePrice     int          `json:"base_price"`
+	DepartureCity string       `json:"departure_city"`
+	DepartureTime time.Time    `json:"departure_time"`
+	FlightNumber  string       `json:"flight_number"`
+	Id            uint         `json:"id"`
+	Status        FlightStatus `json:"status"`
 }
 
 // FlightStatus defines model for Flight.Status.
 type FlightStatus string
 
-// Pagination defines model for Pagination.
-type Pagination struct {
-	CurrentPage *int `json:"current_page,omitempty"`
-	PageSize    *int `json:"page_size,omitempty"`
-	TotalItems  *int `json:"total_items,omitempty"`
-}
-
 // Pong defines model for Pong.
 type Pong struct {
 	StartTime string `json:"startTime"`
+}
+
+// SearchFlightResponse defines model for SearchFlightResponse.
+type SearchFlightResponse struct {
+	Data []Flight `json:"data"`
+
+	// Page Current page number
+	Page int `json:"page"`
+
+	// PageSize Number of items per page
+	PageSize int `json:"pageSize"`
+
+	// TotalCount Total number of records
+	TotalCount int64 `json:"totalCount"`
 }
 
 // SearchFlightsParams defines parameters for SearchFlights.
