@@ -11,11 +11,19 @@ import (
 
 // Defines values for FlightStatus.
 const (
-	CANCELLED  FlightStatus = "CANCELLED"
-	COMPLETED  FlightStatus = "COMPLETED"
-	DELAYED    FlightStatus = "DELAYED"
-	INPROGRESS FlightStatus = "IN_PROGRESS"
-	SCHEDULED  FlightStatus = "SCHEDULED"
+	FlightStatusCANCELLED  FlightStatus = "CANCELLED"
+	FlightStatusCOMPLETED  FlightStatus = "COMPLETED"
+	FlightStatusDELAYED    FlightStatus = "DELAYED"
+	FlightStatusINPROGRESS FlightStatus = "IN_PROGRESS"
+	FlightStatusSCHEDULED  FlightStatus = "SCHEDULED"
+)
+
+// Defines values for OrderStatus.
+const (
+	OrderStatusCANCELLED OrderStatus = "CANCELLED"
+	OrderStatusCOMPLETED OrderStatus = "COMPLETED"
+	OrderStatusCONFIRMED OrderStatus = "CONFIRMED"
+	OrderStatusPENDING   OrderStatus = "PENDING"
 )
 
 // Defines values for SearchFlightsParamsSortBy.
@@ -31,6 +39,14 @@ const (
 	Asc  SearchFlightsParamsSortOrder = "asc"
 	Desc SearchFlightsParamsSortOrder = "desc"
 )
+
+// Customer defines model for Customer.
+type Customer struct {
+	Email openapi_types.Email `json:"email"`
+	Id    *uint               `json:"id,omitempty"`
+	Name  string              `json:"name"`
+	Phone string              `json:"phone"`
+}
 
 // Error defines model for Error.
 type Error struct {
@@ -60,6 +76,24 @@ type Flight struct {
 
 // FlightStatus defines model for Flight.Status.
 type FlightStatus string
+
+// Order defines model for Order.
+type Order struct {
+	BookingTime time.Time   `json:"booking_time"`
+	Customer    *Customer   `json:"customer,omitempty"`
+	CustomerId  uint        `json:"customer_id"`
+	Flight      *Flight     `json:"flight,omitempty"`
+	FlightId    uint        `json:"flight_id"`
+	Id          uint        `json:"id"`
+	OrderNumber string      `json:"order_number"`
+	Status      OrderStatus `json:"status"`
+
+	// TotalAmount Total amount in smallest currency unit (e.g., cents)
+	TotalAmount int `json:"total_amount"`
+}
+
+// OrderStatus defines model for Order.Status.
+type OrderStatus string
 
 // Pong defines model for Pong.
 type Pong struct {
@@ -113,3 +147,12 @@ type SearchFlightsParamsSortBy string
 
 // SearchFlightsParamsSortOrder defines parameters for SearchFlights.
 type SearchFlightsParamsSortOrder string
+
+// CreateOrderJSONBody defines parameters for CreateOrder.
+type CreateOrderJSONBody struct {
+	CustomerId uint `json:"customer_id"`
+	FlightId   uint `json:"flight_id"`
+}
+
+// CreateOrderJSONRequestBody defines body for CreateOrder for application/json ContentType.
+type CreateOrderJSONRequestBody CreateOrderJSONBody

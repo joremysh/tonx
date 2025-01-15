@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ory/dockertest/v3"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 
@@ -14,14 +15,16 @@ import (
 )
 
 var (
-	gdb      *gorm.DB
-	err      error
-	pool     *dockertest.Pool
-	resource *dockertest.Resource
+	gdb           *gorm.DB
+	err           error
+	pool          *dockertest.Pool
+	resource      *dockertest.Resource
+	redisResource *dockertest.Resource
+	redisClient   *redis.Client
 )
 
 func TestMain(m *testing.M) {
-	pool, resource, gdb, err = testingx.NewMysqlInDocker()
+	pool, resource, gdb, redisResource, redisClient, err = testingx.NewTestContainers()
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -30,12 +33,16 @@ func TestMain(m *testing.M) {
 		log.Fatal(err.Error())
 	}
 
-	m.Run()
+	defer func() {
+		if err = pool.Purge(resource); err != nil {
+			log.Fatal(err.Error())
+		}
+		if err = pool.Purge(redisResource); err != nil {
+			log.Fatal(err.Error())
+		}
+	}()
 
-	err = pool.Purge(resource)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
+	m.Run()
 }
 
 func TestFlightRepo_Create(t *testing.T) {

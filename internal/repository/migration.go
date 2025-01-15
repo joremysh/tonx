@@ -7,7 +7,7 @@ import (
 )
 
 func Migrate(gdb *gorm.DB) error {
-	err := gdb.AutoMigrate(&model.Flight{})
+	err := gdb.AutoMigrate(&model.Flight{}, &model.Order{}, &model.Customer{})
 	if err != nil {
 		return err
 	}

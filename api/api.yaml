@@ -82,14 +82,36 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SearchFlightResponse"
-        "400":
-          description: Invalid parameters
+        default:
+          description: unexpected error
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-        "500":
-          description: Internal server error
+
+  /api/v1/orders:
+    post:
+      summary: Submit a new flight booking order
+      description: Creates a new order for flight booking
+      operationId: createOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+      responses:
+        "201":
+          description: Order created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Order"
+        default:
+          description: unexpected error
           content:
             application/json:
               schema:
@@ -196,6 +218,101 @@ components:
           type: integer
           minimum: 1
           description: Number of items per page
+
+    CreateOrderRequest:
+      type: object
+      required:
+        - flight_id
+        - customer_id
+        - ticket_amount
+      properties:
+        flight_id:
+          type: integer
+          format: uint
+          example: 1
+          description: ID of the flight to book
+        customer_id:
+          type: integer
+          format: uint
+          example: 1
+          description: ID of the customer making the booking
+        ticket_amount:
+          type: integer
+          minimum: 1
+          example: 2
+          description: Number of tickets to book
+
+    Order:
+      type: object
+      required:
+        - id
+        - flight_id
+        - customer_id
+        - status
+        - total_amount
+        - order_number
+        - booking_time
+      properties:
+        id:
+          type: integer
+          format: uint
+          example: 1
+        flight_id:
+          type: integer
+          format: uint
+          example: 1
+        customer_id:
+          type: integer
+          format: uint
+          example: 1
+        status:
+          type: string
+          enum: [PENDING, CONFIRMED, CANCELLED, COMPLETED]
+          example: "PENDING"
+        total_amount:
+          type: integer
+          description: Total amount in smallest currency unit (e.g., cents)
+          example: 50000
+        order_number:
+          type: string
+          example: "ORD123456789"
+        booking_time:
+          type: string
+          format: date-time
+          example: "2025-01-20T10:00:00Z"
+        flight:
+          $ref: "#/components/schemas/Flight"
+        customer:
+          $ref: "#/components/schemas/Customer"
+
+    Customer:
+      type: object
+      required:
+        - name
+        - email
+        - phone
+      properties:
+        id:
+          type: integer
+          format: uint
+          example: 1
+          readOnly: true
+        name:
+          type: string
+          example: "John Doe"
+          minLength: 1
+          maxLength: 100
+        email:
+          type: string
+          example: "john.doe@example.com"
+          format: email
+          minLength: 1
+          maxLength: 100
+        phone:
+          type: string
+          example: "0912345678"
+          minLength: 1
+          maxLength: 20
 
     Error:
       required:

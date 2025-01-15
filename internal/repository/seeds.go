@@ -43,7 +43,7 @@ func MockFlight() *model.Flight {
 		DepartureTime:  departureTime,
 		ArrivalTime:    arrivalTime,
 		Aircraft:       "Airbus A330",
-		Status:         string(api.SCHEDULED),
+		Status:         string(api.FlightStatusSCHEDULED),
 		TotalSeats:     100,
 		AvailableSeats: 120,
 		BasePrice:      6000,

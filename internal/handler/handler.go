@@ -16,17 +16,19 @@ import (
 var _ api.ServerInterface = (*BookingSystem)(nil)
 var StartUp string
 
-type BookingSystem struct {
-	gdb           *gorm.DB
-	flightService service.Flight
-}
-
 func NewBookingSystem(gdb *gorm.DB, redisClient *cache.RedisClient) *BookingSystem {
 	flightRepo := repository.NewFlightRepo(gdb)
 	return &BookingSystem{
 		gdb:           gdb,
 		flightService: service.NewFlightService(flightRepo, redisClient),
+		orderService:  service.NewOrderService(gdb, redisClient),
 	}
+}
+
+type BookingSystem struct {
+	gdb           *gorm.DB
+	flightService service.Flight
+	orderService  service.Order
 }
 
 func (s *BookingSystem) GetLiveness(c *gin.Context) {
@@ -97,4 +99,16 @@ func sendErrorResponse(c *gin.Context, code int, errMsg string) {
 		Code:    code,
 		Message: errMsg,
 	})
+}
+
+func (s *BookingSystem) CreateOrder(c *gin.Context) {
+	var order api.Order
+	err := c.Bind(&order)
+	if err != nil {
+		sendErrorResponse(c, http.StatusBadRequest, "Invalid format for Employee")
+		return
+	}
+
+	// TODO implement me
+	panic("implement me")
 }
