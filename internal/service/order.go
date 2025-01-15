@@ -15,6 +15,7 @@ import (
 	"github.com/joremysh/tonx/api"
 	"github.com/joremysh/tonx/internal/constant"
 	"github.com/joremysh/tonx/internal/model"
+	"github.com/joremysh/tonx/internal/repository"
 	"github.com/joremysh/tonx/pkg/cache"
 )
 
@@ -41,13 +42,15 @@ type CreateOrderRequest struct {
 // orderService implements Order
 type orderService struct {
 	gdb         *gorm.DB
+	orderRepo   repository.Order
 	redisClient *cache.RedisClient
 }
 
 // NewOrderService creates a new instance of Order
-func NewOrderService(gdb *gorm.DB, redisClient *cache.RedisClient) Order {
+func NewOrderService(gdb *gorm.DB, redisClient *cache.RedisClient, orderRepo repository.Order) Order {
 	return &orderService{
 		gdb:         gdb,
+		orderRepo:   orderRepo,
 		redisClient: redisClient,
 	}
 }

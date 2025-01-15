@@ -15,6 +15,7 @@ import (
 	"github.com/joremysh/tonx/api"
 	"github.com/joremysh/tonx/internal/handler"
 	"github.com/joremysh/tonx/internal/repository"
+	"github.com/joremysh/tonx/pkg/cache"
 	"github.com/joremysh/tonx/pkg/database"
 )
 
@@ -50,8 +51,8 @@ func main() {
 		port = "8080"
 	}
 	dsn := os.Getenv("DSN")
-	// redisHost := os.Getenv("REDIS_HOST")
-	// redisPort := os.Getenv("REDIS_PORT")
+	redisHost := os.Getenv("REDIS_HOST")
+	redisPort := os.Getenv("REDIS_PORT")
 
 	gdb, err := database.NewDatabase(dsn)
 	if err != nil {
@@ -62,13 +63,13 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
-	// redisClient, err := cache.NewRedisClient(net.JoinHostPort(redisHost, redisPort))
-	// if err != nil {
-	// 	log.Fatal(err.Error())
-	// }
+	redisClient, err := cache.NewRedisClient(net.JoinHostPort(redisHost, redisPort))
+	if err != nil {
+		log.Fatal(err.Error())
+	}
 
 	handler.StartUp = time.Now().Format(time.RFC3339)
-	bookingSystem := handler.NewBookingSystem(gdb, nil)
+	bookingSystem := handler.NewBookingSystem(gdb, redisClient)
 	s := NewServer(bookingSystem, port)
 
 	log.Fatal(s.ListenAndServe())

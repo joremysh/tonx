@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -18,10 +19,11 @@ var StartUp string
 
 func NewBookingSystem(gdb *gorm.DB, redisClient *cache.RedisClient) *BookingSystem {
 	flightRepo := repository.NewFlightRepo(gdb)
+	orderRepo := repository.NewOrderRepo(gdb)
 	return &BookingSystem{
 		gdb:           gdb,
 		flightService: service.NewFlightService(flightRepo, redisClient),
-		orderService:  service.NewOrderService(gdb, redisClient),
+		orderService:  service.NewOrderService(gdb, redisClient, orderRepo),
 	}
 }
 
@@ -38,7 +40,11 @@ func (s *BookingSystem) GetLiveness(c *gin.Context) {
 }
 
 func (s *BookingSystem) SearchFlights(c *gin.Context, params api.SearchFlightsParams) {
-	result, err := s.flightService.ListFlights(c.Request.Context(), parseListParams(params), &params.DepartureDate.Time)
+	var departureDate *time.Time
+	if params.DepartureDate != nil {
+		departureDate = &params.DepartureDate.Time
+	}
+	result, err := s.flightService.ListFlights(c.Request.Context(), parseListParams(params), departureDate)
 	if err != nil {
 		sendErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return

@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 
@@ -20,11 +21,22 @@ func All() []Seed {
 	seeds := make([]Seed, 5)
 	for i := 0; i < len(seeds); i++ {
 		flight := MockFlight()
+		flight.FlightNumber = fmt.Sprintf("BR%d", (i+1)*100)
 		seeds[i].Name = flight.FlightNumber
 		seeds[i].Run = func(gdb *gorm.DB) error {
-			repo := NewFlightRepo(gdb)
-			return repo.Create(flight)
+			return gdb.FirstOrCreate(flight, &model.Flight{FlightNumber: flight.FlightNumber}).Error
 		}
+	}
+
+	for i := 0; i < 3; i++ {
+		customer := MockCustomer()
+		seed := Seed{
+			Name: customer.Name,
+			Run: func(gdb *gorm.DB) error {
+				return gdb.FirstOrCreate(customer, &model.Customer{Email: customer.Email}).Error
+			},
+		}
+		seeds = append(seeds, seed)
 	}
 
 	return seeds
@@ -47,5 +59,14 @@ func MockFlight() *model.Flight {
 		TotalSeats:     100,
 		AvailableSeats: 120,
 		BasePrice:      6000,
+	}
+}
+
+func MockCustomer() *model.Customer {
+	return &model.Customer{
+		Name:   gofakeit.Name(),
+		Email:  gofakeit.Email(),
+		Phone:  gofakeit.Phone(),
+		Status: "ACTIVE",
 	}
 }

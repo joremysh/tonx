@@ -129,7 +129,7 @@ type SearchFlightResponse struct {
 // SearchFlightsParams defines parameters for SearchFlights.
 type SearchFlightsParams struct {
 	// DepartureDate Date of departure (YYYY-MM-DD)
-	DepartureDate openapi_types.Date `form:"departure_date" json:"departure_date"`
+	DepartureDate *openapi_types.Date `form:"departure_date,omitempty" json:"departure_date,omitempty"`
 
 	// Page Page number for pagination
 	Page *int `form:"page,omitempty" json:"page,omitempty"`
@@ -147,7 +147,6 @@ type SearchFlightsParams struct {
 	// - departure_city: Departure city name
 	// - arrival_city: Arrival city name
 	// - airline: Airline name
-	// - status: Flight status
 	// - flight_number: Flight number
 	//
 	// Example: filters[departure_city]=New York&filters[arrival_city]=London&filters[airline]=British Airways

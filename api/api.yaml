@@ -24,7 +24,6 @@ paths:
       parameters:
         - name: departure_date
           in: query
-          required: true
           schema:
             type: string
             format: date
@@ -50,6 +49,7 @@ paths:
           schema:
             type: string
             enum: [departure_time, arrival_time, base_price, available_seats]
+            default: departure_time
           description: Field to sort the results by
         - name: sortOrder
           in: query
@@ -71,7 +71,6 @@ paths:
             - departure_city: Departure city name
             - arrival_city: Arrival city name
             - airline: Airline name
-            - status: Flight status
             - flight_number: Flight number
 
             Example: filters[departure_city]=New York&filters[arrival_city]=London&filters[airline]=British Airways

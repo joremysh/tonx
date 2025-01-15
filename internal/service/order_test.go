@@ -53,7 +53,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestOrderService_CreateOrder(t *testing.T) {
-	svc := NewOrderService(gdb, rc)
+	svc := NewOrderService(gdb, rc, nil)
 
 	flight := &model.Flight{}
 	err = gdb.First(flight).Error
@@ -98,7 +98,7 @@ func TestOrderService_CreateOrder(t *testing.T) {
 }
 
 func TestOrderService_CreateOrderWithNotEnoughTicket(t *testing.T) {
-	svc := NewOrderService(gdb, rc)
+	svc := NewOrderService(gdb, rc, nil)
 
 	flight := &model.Flight{}
 	err = gdb.First(flight).Error
@@ -135,7 +135,7 @@ func TestOrderService_CreateOrderWithNotEnoughTicket(t *testing.T) {
 }
 
 func TestOrderService_CreateOrderMultipleTimesInSerial(t *testing.T) {
-	svc := NewOrderService(gdb, rc)
+	svc := NewOrderService(gdb, rc, nil)
 
 	flight := &model.Flight{}
 	err = gdb.First(flight).Error
@@ -177,7 +177,7 @@ func TestOrderService_CreateOrderMultipleTimesInSerial(t *testing.T) {
 }
 
 func TestOrderService_CreateOrder_Concurrent(t *testing.T) {
-	svc := NewOrderService(gdb, rc)
+	svc := NewOrderService(gdb, rc, nil)
 	ctx := context.Background()
 
 	testCases := []struct {
@@ -210,6 +210,12 @@ func TestOrderService_CreateOrder_Concurrent(t *testing.T) {
 		ticketAmount:         10,
 		totalTickets:         1,
 		expectedSuccessCount: 0,
+	}, {
+		name:                 "Simulate situation with large amount of request",
+		numGoroutines:        100,
+		ticketAmount:         1,
+		totalTickets:         1,
+		expectedSuccessCount: 1,
 	}}
 
 	for _, testCase := range testCases {
@@ -324,12 +330,4 @@ func TestOrderService_CreateOrder_Concurrent(t *testing.T) {
 			}
 		})
 	}
-	// var (
-	// 	numGoroutines        = 4 // Number of concurrent orders
-	// 	ticketAmount         = 1 // Each order requests 1 tickets
-	// 	totalTickets         = 2 // Total tickets to be booked
-	// 	expectedSuccessCount = 2 // Expected half of the orders to succeed due to total ticket amounts
-	// 	expectedErrorCount   = 2 // Expected half of the orders to fail
-	// )
-
 }
