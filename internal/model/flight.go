@@ -1,6 +1,11 @@
 package model
 
-import "time"
+import (
+	"fmt"
+	"time"
+
+	"github.com/joremysh/tonx/internal/constant"
+)
 
 // Flight represents a scheduled flight
 type Flight struct {
@@ -18,4 +23,8 @@ type Flight struct {
 	BasePrice      int       `json:"base_price" gorm:"type:mediumint;not null"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+func (f Flight) FlightKey() string {
+	return fmt.Sprintf(constant.FLIGHT_KEY, f.ID)
 }
