@@ -102,13 +102,34 @@ func sendErrorResponse(c *gin.Context, code int, errMsg string) {
 }
 
 func (s *BookingSystem) CreateOrder(c *gin.Context) {
-	var order api.Order
+	var order api.CreateOrderRequest
 	err := c.Bind(&order)
 	if err != nil {
 		sendErrorResponse(c, http.StatusBadRequest, "Invalid format for Employee")
 		return
 	}
 
-	// TODO implement me
-	panic("implement me")
+	created, err := s.orderService.CreateOrder(c.Request.Context(), service.CreateOrderRequest{
+		FlightID:     order.FlightId,
+		CustomerID:   order.CustomerId,
+		TicketAmount: order.TicketAmount,
+	})
+	if err != nil {
+		sendErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusCreated, ConvertToOrderResponse(created))
+}
+
+func ConvertToOrderResponse(order *model.Order) *api.Order {
+	return &api.Order{
+		BookingTime: order.BookingTime,
+		CustomerId:  order.CustomerID,
+		FlightId:    order.FlightID,
+		Id:          order.ID,
+		OrderNumber: order.OrderNumber,
+		Status:      api.OrderStatus(order.Status),
+		TotalAmount: order.TotalAmount,
+	}
 }

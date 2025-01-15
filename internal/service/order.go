@@ -19,10 +19,8 @@ import (
 )
 
 var (
-	ErrFlightNotFound     = errors.New("flight not found")
-	ErrCustomerNotFound   = errors.New("customer not found")
-	ErrNoAvailableSeats   = errors.New("no available seats")
-	ErrInvalidFlightState = errors.New("flight is not in bookable state")
+	ErrFlightNotFound   = errors.New("flight not found")
+	ErrNoAvailableSeats = errors.New("no available seats")
 )
 
 // Order defines the interface for order operations
@@ -123,56 +121,46 @@ func (s *orderService) CreateOrder(ctx context.Context, req CreateOrderRequest) 
 		}
 	}()
 
+	var order *model.Order
+
 	// 3. Start database transaction only for writing data
-	tx := s.gdb.Begin()
-	if tx.Error != nil {
-		return nil, fmt.Errorf("failed to start transaction: %w", tx.Error)
-	}
-
-	// Ensure transaction rollback on failure
-	committed := false
-	defer func() {
-		if !committed {
-			tx.Rollback()
+	if err = s.gdb.Transaction(func(tx *gorm.DB) error {
+		// 4. Lock and get flight for final update
+		var flight model.Flight
+		if err = tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&flight, req.FlightID).Error; err != nil {
+			return fmt.Errorf("failed to lock flight record: %w", err)
 		}
-	}()
 
-	// 4. Lock and get flight for final update
-	var flight model.Flight
-	if err = tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&flight, req.FlightID).Error; err != nil {
-		return nil, fmt.Errorf("failed to lock flight record: %w", err)
+		// Double-check available seats
+		if flight.AvailableSeats < req.TicketAmount {
+			return ErrNoAvailableSeats
+		}
+
+		// 5. Create order
+		order = &model.Order{
+			FlightID:    flight.ID,
+			CustomerID:  req.CustomerID,
+			Status:      string(api.OrderStatusCOMPLETED),
+			TotalAmount: flight.BasePrice * req.TicketAmount,
+			OrderNumber: generateOrderNumber(constant.ORD_PREFIX),
+			BookingTime: time.Now(),
+		}
+
+		if err = tx.Create(order).Error; err != nil {
+			return fmt.Errorf("failed to create order: %w", err)
+		}
+
+		// 6. Update flight available seats in database
+		if err = tx.Model(&flight).Update("available_seats", gorm.Expr("available_seats - ?", req.TicketAmount)).Error; err != nil {
+			return fmt.Errorf("failed to update flight seats: %w", err)
+		}
+
+		log.Printf("updated flight ID %d available seats from %d to %d\n", flight.ID, flight.AvailableSeats, flight.AvailableSeats-req.TicketAmount)
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
-	// Double-check available seats
-	if flight.AvailableSeats < req.TicketAmount {
-		return nil, ErrNoAvailableSeats
-	}
-
-	// 5. Create order
-	order := &model.Order{
-		FlightID:    flight.ID,
-		CustomerID:  req.CustomerID,
-		Status:      string(api.OrderStatusCOMPLETED),
-		TotalAmount: flight.BasePrice * req.TicketAmount,
-		OrderNumber: generateOrderNumber(constant.ORD_PREFIX),
-		BookingTime: time.Now(),
-	}
-
-	if err = tx.Create(order).Error; err != nil {
-		return nil, fmt.Errorf("failed to create order: %w", err)
-	}
-
-	// 6. Update flight available seats in database
-	if err = tx.Model(&flight).Update("available_seats", gorm.Expr("available_seats - ?", req.TicketAmount)).Error; err != nil {
-		return nil, fmt.Errorf("failed to update flight seats: %w", err)
-	}
-
-	// 7. Commit transaction
-	if err = tx.Commit().Error; err != nil {
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	committed = true
 	seatRestored = true // No need to restore Redis seats on success
 	return order, nil
 }

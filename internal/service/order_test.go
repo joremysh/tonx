@@ -180,113 +180,156 @@ func TestOrderService_CreateOrder_Concurrent(t *testing.T) {
 	svc := NewOrderService(gdb, rc)
 	ctx := context.Background()
 
-	var (
-		numGoroutines        = 4 // Number of concurrent orders
-		ticketAmount         = 1 // Each order requests 1 tickets
-		totalTickets         = 2 // Total tickets to be booked
-		expectedSuccessCount = 2 // Expected half of the orders to succeed due to total ticket amounts
-		expectedErrorCount   = 2 // Expected half of the orders to fail
-	)
+	testCases := []struct {
+		name                 string
+		numGoroutines        int
+		ticketAmount         int
+		totalTickets         int
+		expectedSuccessCount int
+	}{{
+		name:                 "Expected half of the orders to succeed due to total ticket amounts",
+		numGoroutines:        4,
+		ticketAmount:         1,
+		totalTickets:         2,
+		expectedSuccessCount: 2,
+	}, {
+		name:                 "Expected all of the orders to succeed",
+		numGoroutines:        10,
+		ticketAmount:         1,
+		totalTickets:         10,
+		expectedSuccessCount: 10,
+	}, {
+		name:                 "Expected only 1 of the orders to succeed",
+		numGoroutines:        10,
+		ticketAmount:         1,
+		totalTickets:         1,
+		expectedSuccessCount: 1,
+	}, {
+		name:                 "Expected none the orders to succeed",
+		numGoroutines:        10,
+		ticketAmount:         10,
+		totalTickets:         1,
+		expectedSuccessCount: 0,
+	}}
 
-	flights := make([]model.Flight, 0)
-	err = gdb.Find(&flights).Error
-	require.NoError(t, err)
-	require.NotEmpty(t, flights)
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			var (
+				numGoroutines        = testCase.numGoroutines
+				ticketAmount         = testCase.ticketAmount
+				totalTickets         = testCase.totalTickets
+				expectedSuccessCount = testCase.expectedSuccessCount
+			)
 
-	for i, flight := range flights {
-		err = rc.Delete(ctx, flight.FlightKey())
-		require.NoError(t, err)
-		flights[i].AvailableSeats = totalTickets
-	}
-	err = gdb.Save(&flights).Error
-	require.NoError(t, err)
+			flights := make([]model.Flight, 0)
+			err = gdb.Find(&flights).Error
+			require.NoError(t, err)
+			require.NotEmpty(t, flights)
 
-	flight := flights[0]
-	require.NotZero(t, flight.ID)
-
-	// Create a customer
-	customer := &model.Customer{
-		Name:  gofakeit.Name(),
-		Email: gofakeit.Email(),
-		Phone: gofakeit.Phone(),
-	}
-	err = gdb.Save(customer).Error
-	require.NoError(t, err)
-
-	// Use wait group to wait for all goroutines
-	var wg sync.WaitGroup
-	// Channel to collect results
-	results := make(chan error, numGoroutines)
-	// Channel to collect successful orders
-	orders := make(chan *model.Order, numGoroutines)
-
-	// Start concurrent order creation
-	for i := 0; i < numGoroutines; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
-			order, err := svc.CreateOrder(ctx, CreateOrderRequest{
-				FlightID:     flight.ID,
-				CustomerID:   customer.ID,
-				TicketAmount: ticketAmount,
-			})
-
-			if err != nil {
-				results <- err
-				return
+			for i, flight := range flights {
+				err = rc.Delete(ctx, flight.FlightKey())
+				require.NoError(t, err)
+				flights[i].AvailableSeats = totalTickets
 			}
-			orders <- order
-			results <- nil
-		}()
+			err = gdb.Save(&flights).Error
+			require.NoError(t, err)
+
+			flight := flights[0]
+			require.NotZero(t, flight.ID)
+
+			// Create a customer
+			customer := &model.Customer{
+				Name:  gofakeit.Name(),
+				Email: gofakeit.Email(),
+				Phone: gofakeit.Phone(),
+			}
+			err = gdb.Save(customer).Error
+			require.NoError(t, err)
+
+			// Use wait group to wait for all goroutines
+			var wg sync.WaitGroup
+			// Channel to collect results
+			results := make(chan error, numGoroutines)
+			// Channel to collect successful orders
+			orders := make(chan *model.Order, numGoroutines)
+
+			// Start concurrent order creation
+			for i := 0; i < numGoroutines; i++ {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+
+					order, err := svc.CreateOrder(ctx, CreateOrderRequest{
+						FlightID:     flight.ID,
+						CustomerID:   customer.ID,
+						TicketAmount: ticketAmount,
+					})
+
+					if err != nil {
+						results <- err
+						return
+					}
+					orders <- order
+					results <- nil
+				}()
+			}
+
+			// Wait for all goroutines to complete
+			wg.Wait()
+			close(results)
+			close(orders)
+
+			// Count successful and failed orders
+			successCount := 0
+			var errors []error
+			for err = range results {
+				if err != nil {
+					errors = append(errors, err)
+				} else {
+					successCount++
+				}
+			}
+
+			// Collect all orders
+			var completedOrders []*model.Order
+			for order := range orders {
+				completedOrders = append(completedOrders, order)
+			}
+
+			// Verify results
+			t.Logf("Successful orders: %d, Failed orders: %d", successCount, len(errors))
+			require.Equal(t, expectedSuccessCount, successCount)
+			require.Equal(t, numGoroutines-expectedSuccessCount, len(errors))
+
+			// Verify final flight seat count in database
+			var finalFlight model.Flight
+			err = gdb.First(&finalFlight, flight.ID).Error
+			require.NoError(t, err)
+			expectedSeats := flight.AvailableSeats - (successCount * ticketAmount)
+			require.Equal(t, expectedSeats, finalFlight.AvailableSeats, "Final available seats count mismatch")
+
+			// Verify Redis seat count
+			var redisSeats int
+			err = rc.Get(ctx, flight.FlightKey(), &redisSeats)
+			require.NoError(t, err)
+			require.Equal(t, expectedSeats, redisSeats, "Redis seats count mismatch")
+
+			// Verify order details
+			for _, order := range completedOrders {
+				require.NotZero(t, order.ID)
+				require.Equal(t, flight.ID, order.FlightID)
+				require.Equal(t, customer.ID, order.CustomerID)
+				require.Equal(t, ticketAmount*flight.BasePrice, order.TotalAmount)
+				require.Equal(t, string(api.OrderStatusCOMPLETED), order.Status)
+			}
+		})
 	}
+	// var (
+	// 	numGoroutines        = 4 // Number of concurrent orders
+	// 	ticketAmount         = 1 // Each order requests 1 tickets
+	// 	totalTickets         = 2 // Total tickets to be booked
+	// 	expectedSuccessCount = 2 // Expected half of the orders to succeed due to total ticket amounts
+	// 	expectedErrorCount   = 2 // Expected half of the orders to fail
+	// )
 
-	// Wait for all goroutines to complete
-	wg.Wait()
-	close(results)
-	close(orders)
-
-	// Count successful and failed orders
-	successCount := 0
-	var errors []error
-	for err = range results {
-		if err != nil {
-			errors = append(errors, err)
-		} else {
-			successCount++
-		}
-	}
-
-	// Collect all orders
-	var completedOrders []*model.Order
-	for order := range orders {
-		completedOrders = append(completedOrders, order)
-	}
-
-	// Verify results
-	t.Logf("Successful orders: %d, Failed orders: %d", successCount, len(errors))
-	require.Equal(t, expectedSuccessCount, successCount)
-	require.Equal(t, expectedErrorCount, len(errors))
-
-	// Verify final flight seat count in database
-	var finalFlight model.Flight
-	err = gdb.First(&finalFlight, flight.ID).Error
-	require.NoError(t, err)
-	expectedSeats := flight.AvailableSeats - (successCount * ticketAmount)
-	require.Equal(t, expectedSeats, finalFlight.AvailableSeats, "Final available seats count mismatch")
-
-	// Verify Redis seat count
-	var redisSeats int
-	err = rc.Get(ctx, flight.FlightKey(), &redisSeats)
-	require.NoError(t, err)
-	require.Equal(t, expectedSeats, redisSeats, "Redis seats count mismatch")
-
-	// Verify order details
-	for _, order := range completedOrders {
-		require.NotZero(t, order.ID)
-		require.Equal(t, flight.ID, order.FlightID)
-		require.Equal(t, customer.ID, order.CustomerID)
-		require.Equal(t, ticketAmount*flight.BasePrice, order.TotalAmount)
-		require.Equal(t, string(api.OrderStatusCOMPLETED), order.Status)
-	}
 }

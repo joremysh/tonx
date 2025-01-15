@@ -40,6 +40,18 @@ const (
 	Desc SearchFlightsParamsSortOrder = "desc"
 )
 
+// CreateOrderRequest defines model for CreateOrderRequest.
+type CreateOrderRequest struct {
+	// CustomerId ID of the customer making the booking
+	CustomerId uint `json:"customer_id"`
+
+	// FlightId ID of the flight to book
+	FlightId uint `json:"flight_id"`
+
+	// TicketAmount Number of tickets to book
+	TicketAmount int `json:"ticket_amount"`
+}
+
 // Customer defines model for Customer.
 type Customer struct {
 	Email openapi_types.Email `json:"email"`
@@ -148,11 +160,5 @@ type SearchFlightsParamsSortBy string
 // SearchFlightsParamsSortOrder defines parameters for SearchFlights.
 type SearchFlightsParamsSortOrder string
 
-// CreateOrderJSONBody defines parameters for CreateOrder.
-type CreateOrderJSONBody struct {
-	CustomerId uint `json:"customer_id"`
-	FlightId   uint `json:"flight_id"`
-}
-
 // CreateOrderJSONRequestBody defines body for CreateOrder for application/json ContentType.
-type CreateOrderJSONRequestBody CreateOrderJSONBody
+type CreateOrderJSONRequestBody = CreateOrderRequest
